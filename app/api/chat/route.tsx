@@ -1,7 +1,7 @@
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
-    const lastMessage = messages[messages.length - 1]?.content || "";
+    const body = await req.json() as { messages: { role: string; content: string }[] };
+    const lastMessage = body.messages[body.messages.length - 1]?.content || "";
 
     const response = await fetch("https://api.vercel.ai/v1/generate", {
       method: "POST",
@@ -10,16 +10,18 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "gpt-3.5-turbo", 
         provider: "openai",
         input: lastMessage,
       }),
     });
 
     const text = await response.text();
-    console.log("Raw AI Gateway response:", text); // للتشخيص لو فيه خطأ
+    console.log("Raw AI Gateway response:", text);
 
-    let data: any;
+    type AIResponse = { output_text?: string; [key: string]: unknown };
+    let data: AIResponse;
+
     try {
       data = JSON.parse(text);
     } catch {
@@ -29,12 +31,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const reply = data.output_text || "No response from model";
+    const reply = data.output_text ?? "No response from model";
 
     return new Response(
       JSON.stringify({ reply: { content: reply } }),
       { headers: { "Content-Type": "application/json" } }
     );
+
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     return new Response(

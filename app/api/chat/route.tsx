@@ -1,8 +1,8 @@
 export async function POST(req: Request) {
-  const { messages } = await req.json();
-  const lastMessage = messages[messages.length - 1]?.content || "";
-
   try {
+    const { messages } = await req.json();
+    const lastMessage = messages[messages.length - 1]?.content || "";
+
     const response = await fetch("https://api.vercel.ai/v1/generate", {
       method: "POST",
       headers: {
@@ -16,23 +16,30 @@ export async function POST(req: Request) {
       }),
     });
 
-    const text = await response.text(); // جرب نص الرسالة قبل تحويلها JSON
-    let data;
+    const text = await response.text();
+    console.log("Raw AI Gateway response:", text); // للتشخيص لو فيه خطأ
+
+    let data: any;
     try {
       data = JSON.parse(text);
     } catch {
-      return new Response(JSON.stringify({ error: "Invalid JSON from AI Gateway", raw: text }), { status: 500 });
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON from AI Gateway", raw: text }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     const reply = data.output_text || "No response from model";
 
-    return new Response(JSON.stringify({ reply: { content: reply } }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ reply: { content: reply } }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
   }
 }

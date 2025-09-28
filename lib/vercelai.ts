@@ -1,5 +1,5 @@
 export async function generateAIReply(input: string) {
-  const response = await fetch("https://api.vercel.ai/v1/generate", {
+  const res = await fetch("https://api.vercel.ai/v1/generate", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.VERCEL_AI_KEY}`,
@@ -12,11 +12,11 @@ export async function generateAIReply(input: string) {
     }),
   });
 
-  const text = await response.text();
-  try {
-    const data = JSON.parse(text);
-    return data.output_text || "No response from model";
-  } catch {
-    throw new Error(`Invalid JSON from AI Gateway: ${text}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`AI Gateway returned ${res.status}: ${text}`);
   }
+
+  const data = await res.json();
+  return data.output_text ?? "No response from model";
 }
